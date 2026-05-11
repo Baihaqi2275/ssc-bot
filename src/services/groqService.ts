@@ -26,6 +26,8 @@ const CHEFBOT_WEB_SEARCH_UNNEEDED_MESSAGE =
   "Mode Web Search tidak diperlukan untuk ChefBot. Matikan Web Search atau pilih model chat biasa seperti Llama 3.1 8B.";
 const UNSUPPORTED_REQUEST_CONFIGURATION_MESSAGE =
   "Model yang dipilih tidak mendukung konfigurasi request ini. Pilih model chat biasa untuk menjalankan ChefBot, seperti Llama 3.1 8B atau Llama 3.3 70B.";
+const NO_CURRENT_BUDGET_GUIDANCE =
+  "Pesan terakhir tidak menyebut budget. Jangan mengasumsikan atau menyebut Rp50.000 atau budget tertentu.";
 const BUDGET_50K_LUNCH_GUIDANCE = `Untuk pertanyaan budget sekitar Rp50.000 untuk makan siang:
 - Sertakan kombinasi Nasi Goreng Spesial (Rp35.000) + Es Teh Manis (Rp8.000) total Rp43.000
 - Sertakan alternatif Ayam Bakar Madu (Rp45.000)
@@ -39,6 +41,16 @@ const VEGETARIAN_GUIDANCE = `Untuk pertanyaan vegetarian:
 - Jangan menambahkan catatan alergi kecuali user menyebut alergi
 - Gunakan pembuka "Untuk pilihan vegetarian..."
 - Jawaban natural, tidak kaku`;
+const SWEET_PACKAGE_GUIDANCE = `Untuk pertanyaan manis/dessert:
+- Penuhi rasa manis lewat dessert atau nama menu yang eksplisit manis
+- Ayam Bakar Madu boleh dianggap condong manis karena "Madu"
+- Nasi Goreng Spesial hanya makanan utama netral, jangan sebut sebagai menu manis
+- Preferensikan Ayam Bakar Madu + Puding Mangga atau Gado-Gado Jakarta + Puding Mangga`;
+const NOT_SPICY_GUIDANCE = `Untuk pertanyaan tidak pedas/tidak terlalu pedas:
+- Pilih menu yang tidak tampak pedas dari nama
+- Jangan klaim tingkat pedas pasti
+- Jangan ulangi "tidak disebutkan secara spesifik dalam menu" per item
+- Jika perlu, beri satu catatan akhir: "Untuk tingkat pedas pastinya, sebaiknya konfirmasi ke restoran."`;
 const PRESIDENT_GUARDRAIL_GUIDANCE = `Untuk pertanyaan di luar topik seperti politik:
 - Tolak dengan sopan sebagai ChefBot
 - Jelaskan hanya fokus pada menu restoran
@@ -421,6 +433,94 @@ function getNormalChatMessages(messages: ChatMessage[]) {
   return messages.slice(-NORMAL_CHAT_CONTEXT_LIMIT);
 }
 
+function normalizeChefBotBudgetMessage(content: string) {
+  return content
+    .toLowerCase()
+    .replace(/rp\s*([0-9][0-9.\s]*)/g, " rp$1 ")
+    .replace(/[^a-z0-9.\s]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasExplicitBudgetReference(content: string) {
+  const cleanContent = normalizeChefBotBudgetMessage(content);
+
+  if (!cleanContent) {
+    return false;
+  }
+
+  return (
+    /\b(?:budget|anggaran|batas harga|kisaran harga|range harga)\b/.test(
+      cleanContent,
+    ) ||
+    /\b(?:rp|rupiah)\s*[0-9]/.test(cleanContent) ||
+    /\b[0-9]+(?:[.,][0-9]+)?\s*(?:ribu|rb)\b/.test(cleanContent) ||
+    /\b[0-9][0-9.\s]{2,}\b/.test(cleanContent) ||
+    /\b(?:harga)\b.{0,30}\b(?:maksimal|max|di bawah|dibawah|kurang dari|tidak lebih dari|murah|lebih murah)\b/.test(
+      cleanContent,
+    )
+  );
+}
+
+function refersToPreviousBudget(content: string) {
+  const cleanContent = normalizeChefBotBudgetMessage(content);
+
+  if (!cleanContent) {
+    return false;
+  }
+
+  return (
+    /\b(?:yang tadi|tadi|sebelumnya|budget sebelumnya|anggaran sebelumnya)\b/.test(
+      cleanContent,
+    ) ||
+    /\b(?:versi|pilihan|menu)\b.{0,30}\b(?:lebih murah|termurah|hemat)\b/.test(
+      cleanContent,
+    )
+  );
+}
+
+function shouldProtectFromBudgetLeakage(latestUserMessage: string) {
+  return (
+    isChefBotMode() &&
+    !hasExplicitBudgetReference(latestUserMessage) &&
+    !refersToPreviousBudget(latestUserMessage)
+  );
+}
+
+function sanitizePreviousBudgetMentions(content: string) {
+  return content
+    .replace(
+      /\b(?:dengan|untuk|sesuai|pas dengan|masih sesuai|di bawah|dibawah)\s+budget\s+(?:rp\s*)?[0-9][0-9.\s]*(?:ribu|rb)?\b/gi,
+      "tanpa membawa budget sebelumnya",
+    )
+    .replace(
+      /\b(?:budget|anggaran)\s*(?:sekitar|sebesar|maksimal|max)?\s*(?:rp\s*)?[0-9][0-9.\s]*(?:ribu|rb)?\b/gi,
+      "budget sebelumnya",
+    )
+    .replace(/\b(?:rp\s*)?50[\s.]*000\b/gi, "budget sebelumnya")
+    .replace(/\b50\s*(?:ribu|rb)\b/gi, "budget sebelumnya");
+}
+
+function getBudgetLeakageControlledMessages(
+  messages: ChatMessage[],
+  latestUserMessage: string,
+) {
+  if (!shouldProtectFromBudgetLeakage(latestUserMessage)) {
+    return messages;
+  }
+
+  return messages.map((message, index) => {
+    if (index === messages.length - 1 || !message.content.trim()) {
+      return message;
+    }
+
+    return {
+      ...message,
+      content: sanitizePreviousBudgetMentions(message.content),
+    };
+  });
+}
+
 function toGroqRequestMessage(
   message: ChatMessage,
   modelSupportsVision: boolean,
@@ -514,6 +614,20 @@ function isVegetarianPrompt(cleanContent: string) {
   return /\b(?:vegetarian|veggie)\b|\btanpa daging\b/.test(cleanContent);
 }
 
+function isSweetOrDessertPrompt(cleanContent: string) {
+  return /\b(?:manis|dessert|pencuci mulut|madu|coklat|mangga)\b/.test(
+    cleanContent,
+  );
+}
+
+function isNotSpicyPrompt(cleanContent: string) {
+  return (
+    /\b(?:tidak pedas|tidak terlalu pedas|kurang pedas|jangan pedas|ga pedas|nggak pedas|gak pedas)\b/.test(
+      cleanContent,
+    ) || /\bpedas\b/.test(cleanContent)
+  );
+}
+
 function isPresidentGuardrailPrompt(cleanContent: string) {
   return (
     /\bpresiden\b/.test(cleanContent) ||
@@ -536,14 +650,6 @@ function getChefBotDynamicGuidanceMessage(userMessage: string) {
     return null;
   }
 
-  if (isBudget50kLunchPrompt(cleanContent)) {
-    return BUDGET_50K_LUNCH_GUIDANCE;
-  }
-
-  if (isVegetarianPrompt(cleanContent)) {
-    return VEGETARIAN_GUIDANCE;
-  }
-
   if (isPresidentGuardrailPrompt(cleanContent)) {
     return PRESIDENT_GUARDRAIL_GUIDANCE;
   }
@@ -552,7 +658,25 @@ function getChefBotDynamicGuidanceMessage(userMessage: string) {
     return MATH_GUARDRAIL_GUIDANCE;
   }
 
-  return null;
+  const guidanceMessages: string[] = [];
+
+  if (isBudget50kLunchPrompt(cleanContent)) {
+    guidanceMessages.push(BUDGET_50K_LUNCH_GUIDANCE);
+  }
+
+  if (isVegetarianPrompt(cleanContent)) {
+    guidanceMessages.push(VEGETARIAN_GUIDANCE);
+  }
+
+  if (isSweetOrDessertPrompt(cleanContent)) {
+    guidanceMessages.push(SWEET_PACKAGE_GUIDANCE);
+  }
+
+  if (isNotSpicyPrompt(cleanContent)) {
+    guidanceMessages.push(NOT_SPICY_GUIDANCE);
+  }
+
+  return guidanceMessages.length > 0 ? guidanceMessages.join("\n\n") : null;
 }
 
 function isChefBotRuleModificationAttempt(content: string) {
@@ -685,20 +809,30 @@ export async function sendChatMessage(
   const useWebSearchTools =
     options.webSearchEnabled === true && supportsWebSearch(modelId);
   const useCompoundWebSearch = useWebSearchTools && isCompoundWebSearchModel(modelId);
-  const requestMessages = useCompoundWebSearch
+  const latestUserMessage = getLatestUserMessageContent(messages);
+  const rawRequestMessages = useCompoundWebSearch
     ? getLatestUserMessageOnly(messages)
     : useWebSearchTools
       ? getWebSearchMessages(messages)
       : getNormalChatMessages(messages);
+  const requestMessages = getBudgetLeakageControlledMessages(
+    rawRequestMessages,
+    latestUserMessage,
+  );
   const requestSendsImage =
     modelSupportsVision &&
     requestMessages.some(
       (message, index) =>
         index === requestMessages.length - 1 && messageHasValidImage(message),
     );
-  const dynamicGuidanceContent = getChefBotDynamicGuidanceMessage(
-    getLatestUserMessageContent(messages),
-  );
+  const noCurrentBudgetGuidanceMessage: GroqRequestMessage | null =
+    shouldProtectFromBudgetLeakage(latestUserMessage)
+      ? {
+          role: "system",
+          content: NO_CURRENT_BUDGET_GUIDANCE,
+        }
+      : null;
+  const dynamicGuidanceContent = getChefBotDynamicGuidanceMessage(latestUserMessage);
   const dynamicGuidanceMessage: GroqRequestMessage | null = dynamicGuidanceContent
     ? {
         role: "system",
@@ -714,6 +848,7 @@ export async function sendChatMessage(
     model: modelId,
     messages: [
       getSystemInstructionMessage(),
+      ...(noCurrentBudgetGuidanceMessage ? [noCurrentBudgetGuidanceMessage] : []),
       ...(dynamicGuidanceMessage ? [dynamicGuidanceMessage] : []),
       ...requestMessages.map((message, index) =>
         toGroqRequestMessage(
