@@ -11,34 +11,34 @@ export function Overview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Total Users" 
-          value="1,284" 
-          delta="+12.5%" 
+          value="0" 
+          delta="0%" 
           deltaType="positive"
-          hint="vs bulan lalu"
+          hint="Belum ada data"
           icon={Users}
         />
         <StatCard 
           title="Active Chats Today" 
-          value="342" 
-          delta="+5.2%" 
+          value="0" 
+          delta="0%" 
           deltaType="positive"
-          hint="vs kemarin"
+          hint="Belum ada data"
           icon={MessageCircle}
         />
         <StatCard 
           title="Total Messages" 
-          value="45,231" 
-          delta="+18.1%" 
+          value="0" 
+          delta="0%" 
           deltaType="positive"
-          hint="vs bulan lalu"
+          hint="Belum ada data"
           icon={MessageSquareText}
         />
         <StatCard 
           title="AI Tokens Used" 
-          value="2.4M" 
-          delta="-2.1%" 
-          deltaType="negative"
-          hint="vs bulan lalu"
+          value="0" 
+          delta="0%" 
+          deltaType="positive"
+          hint="Belum ada data"
           icon={Zap}
         />
       </div>

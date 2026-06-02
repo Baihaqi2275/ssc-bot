@@ -1,19 +1,18 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 const topics = [
-  { name: "Horor", percentage: 85 },
-  { name: "Komedi", percentage: 65 },
-  { name: "Drama", percentage: 45 },
-  { name: "Action", percentage: 35 },
-  { name: "Romance", percentage: 20 },
-  { name: "Thriller", percentage: 15 },
+  { name: "Pendaftaran", percentage: 0 },
+  { name: "Biaya Kuliah", percentage: 0 },
+  { name: "Jadwal", percentage: 0 },
+  { name: "Beasiswa", percentage: 0 },
+  { name: "Fasilitas", percentage: 0 },
 ]
 
 export function TopTopics() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">Top Topics</CardTitle>
+        <CardTitle className="text-lg font-semibold">Topik yang sering dibincangkan</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4 mt-2">

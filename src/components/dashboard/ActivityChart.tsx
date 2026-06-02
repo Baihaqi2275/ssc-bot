@@ -2,13 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts"
 
 const data = [
-  { name: "Mon", messages: 4000, users: 2400 },
-  { name: "Tue", messages: 3000, users: 1398 },
-  { name: "Wed", messages: 2000, users: 9800 },
-  { name: "Thu", messages: 2780, users: 3908 },
-  { name: "Fri", messages: 1890, users: 4800 },
-  { name: "Sat", messages: 2390, users: 3800 },
-  { name: "Sun", messages: 3490, users: 4300 },
+  { name: "Mon", messages: 0, users: 0 },
+  { name: "Tue", messages: 0, users: 0 },
+  { name: "Wed", messages: 0, users: 0 },
+  { name: "Thu", messages: 0, users: 0 },
+  { name: "Fri", messages: 0, users: 0 },
+  { name: "Sat", messages: 0, users: 0 },
+  { name: "Sun", messages: 0, users: 0 },
 ]
 
 export function ActivityChart() {
