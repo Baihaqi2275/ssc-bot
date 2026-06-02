@@ -7,18 +7,11 @@ import { Eye, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // Dummy data for detailed conversation history
-const initialConversations = [
-  { id: "CONV-001", student: "Ahmad Reza", nim: "1301202301", topic: "Batas Pembayaran BPP", date: "2026-06-02 10:15" },
-  { id: "CONV-002", student: "Siti Aminah", nim: "1301213402", topic: "Syarat Sidang Skripsi", date: "2026-06-02 09:30" },
-  { id: "CONV-003", student: "Budi Santoso", nim: "1301194503", topic: "Kendala Cetak Transkrip", date: "2026-06-01 15:45" },
-  { id: "CONV-004", student: "Dewi Lestari", nim: "1301221122", topic: "Prosedur Cuti Akademik", date: "2026-06-01 11:20" },
-  { id: "CONV-005", student: "Rina Nose", nim: "1301219988", topic: "KTM Hilang", date: "2026-05-30 14:10" },
-  { id: "CONV-006", student: "Joko Anwar", nim: "1301205566", topic: "Urus Surat Keterangan Mahasiswa", date: "2026-05-29 08:05" },
-];
+const mockConversations: any[] = [];
 
 export function AdminConversations() {
   const [search, setSearch] = useState("");
-  const [conversations, setConversations] = useState(initialConversations);
+  const [conversations, setConversations] = useState(mockConversations);
 
   const filteredConversations = conversations.filter(
     (c) =>
