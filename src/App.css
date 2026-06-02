@@ -3775,3 +3775,61 @@
     display: none;
   }
 }
+
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #111827;
+}
+
+.login-box {
+  width: 350px;
+  padding: 30px;
+  border-radius: 12px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.login-box h2 {
+  text-align: center;
+}
+
+.login-box input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.login-box button,
+.navbar button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.navbar {
+  padding: 12px 20px;
+  background: #111827;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar span {
+  margin-right: 15px;
+}
+
+.link-text {
+  color: #2563eb;
+  font-weight: bold;
+  cursor: pointer;
+}
