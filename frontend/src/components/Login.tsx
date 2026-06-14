@@ -11,6 +11,7 @@ type LoginProps = {
 function Login({ onLogin, onShowRegister }: LoginProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,22 +19,26 @@ function Login({ onLogin, onShowRegister }: LoginProps) {
     const savedUsername = localStorage.getItem("registeredUsername");
     const savedPassword = localStorage.getItem("registeredPassword");
 
-    const isDefaultAdmin = username === "admin" && password === "admin123";
-    const isRegisteredUser =
-      username === savedUsername && password === savedPassword;
-
-    if (isDefaultAdmin) {
-      localStorage.setItem("isLogin", "true");
-      localStorage.setItem("username", username);
-      localStorage.setItem("role", "admin");
-      onLogin(username, "admin");
-    } else if (isRegisteredUser) {
-      localStorage.setItem("isLogin", "true");
-      localStorage.setItem("username", username);
-      localStorage.setItem("role", "user");
-      onLogin(username, "user");
+    if (loginMode === "admin") {
+      const isDefaultAdmin = username === "admin" && password === "admin123";
+      if (isDefaultAdmin) {
+        localStorage.setItem("isLogin", "true");
+        localStorage.setItem("username", username);
+        localStorage.setItem("role", "admin");
+        onLogin(username, "admin");
+      } else {
+        alert("Kredensial Admin tidak valid!");
+      }
     } else {
-      alert("Username atau password salah!");
+      const isRegisteredUser = username === savedUsername && password === savedPassword;
+      if (isRegisteredUser) {
+        localStorage.setItem("isLogin", "true");
+        localStorage.setItem("username", username);
+        localStorage.setItem("role", "user");
+        onLogin(username, "user");
+      } else {
+        alert("Username atau password mahasiswa salah!");
+      }
     }
   };
 
@@ -47,11 +52,27 @@ function Login({ onLogin, onShowRegister }: LoginProps) {
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to left, hsla(359, 75%, 28%, 0.8) 0%, transparent 25%)' }} />
       <Card className="w-full max-w-md shadow-xl border-muted relative z-10 bg-background/95 backdrop-blur-sm">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-primary tracking-tight text-center mb-2">Selamat Datang di Layanan SSC</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary tracking-tight text-center mb-2">
+            {loginMode === "admin" ? "Portal Admin SSC" : "Selamat Datang di Layanan SSC"}
+          </CardTitle>
           <CardDescription className="text-center">
-            Masukkan username dan password Anda untuk masuk
+            {loginMode === "admin" ? "Login khusus staf administrasi SSC" : "Masukkan username dan password Anda untuk masuk"}
           </CardDescription>
         </CardHeader>
+        <div className="flex justify-center gap-2 px-6 pb-2">
+          <button 
+            onClick={() => setLoginMode("user")}
+            className={`px-4 py-1 text-sm font-medium rounded-full transition-colors ${loginMode === "user" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Mahasiswa
+          </button>
+          <button 
+            onClick={() => setLoginMode("admin")}
+            className={`px-4 py-1 text-sm font-medium rounded-full transition-colors ${loginMode === "admin" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Admin SSC
+          </button>
+        </div>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -77,16 +98,18 @@ function Login({ onLogin, onShowRegister }: LoginProps) {
             <Button type="submit" className="w-full">
               Login
             </Button>
-            <div className="text-sm text-center text-muted-foreground">
-              Belum punya akun?{" "}
-              <button 
-                type="button" 
-                onClick={onShowRegister}
-                className="text-primary hover:underline font-medium"
-              >
-                Register
-              </button>
-            </div>
+            {loginMode === "user" && (
+              <div className="text-sm text-center text-muted-foreground">
+                Belum punya akun?{" "}
+                <button 
+                  type="button" 
+                  onClick={onShowRegister}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Register
+                </button>
+              </div>
+            )}
           </CardFooter>
         </form>
       </Card>
