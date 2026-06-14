@@ -1,5 +1,68 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
+import { pool } from "../config/database";
+
+import { chatSessions, chatMessages } from "./chat.controller";
+
+export const getDashboardStats = async (req: Request, res: Response) => {
+  try {
+    const [userRows]: any = await pool.query("SELECT COUNT(*) as total FROM users WHERE role = 'user'");
+    const totalUsers = userRows[0].total;
+
+    return res.json({
+      status: "success",
+      data: {
+        totalUsers,
+        activeChats: chatSessions.length,
+        totalMessages: chatMessages.length,
+        aiTokensUsed: chatMessages.length * 15 // just an estimate for now
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: "Gagal mengambil statistik" });
+  }
+};
+
+export const getNotifications = async (req: Request, res: Response) => {
+  try {
+    const [userRows]: any = await pool.query(
+      "SELECT id, name, email FROM users WHERE role = 'user' ORDER BY id DESC LIMIT 5"
+    );
+    
+    const userActivities = userRows.map((user: any) => {
+      const timestamp = parseInt(user.id);
+      const dateStr = isNaN(timestamp) ? new Date().toISOString() : new Date(timestamp).toISOString();
+      return {
+        id: `user-${user.id}`,
+        type: "register",
+        name: user.name,
+        action: "mendaftar akun baru",
+        created_at: dateStr
+      };
+    });
+
+    const chatActivities = chatSessions.map(session => ({
+      id: `chat-${session.id}`,
+      type: "chat",
+      name: "Mahasiswa",
+      action: "menggunakan chatbot",
+      created_at: session.createdAt
+    }));
+
+    const allActivities = [...userActivities, ...chatActivities].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    const recent = allActivities.slice(0, 10);
+
+    return res.json({
+      status: "success",
+      data: recent
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: "Gagal mengambil notifikasi" });
+  }
+};
 
 let admins: any[] = [];
 

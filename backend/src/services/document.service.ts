@@ -4,6 +4,7 @@ import { extractFileText } from "../utils/extractFileText";
 import { chunkText } from "../utils/chunkText";
 import { generateEmbedding } from "./embedding.service";
 import { DocumentChunk } from "./rag.service";
+import { pool } from "../config/database";
 
 export type DocumentRecord = {
   id: string;
@@ -18,7 +19,6 @@ export type DocumentRecord = {
 
 const DATA_DIR = path.join(process.cwd(), "src", "data");
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
-const DOCUMENTS_PATH = path.join(DATA_DIR, "documents.json");
 const CHUNKS_PATH = path.join(DATA_DIR, "documentChunks.json");
 
 function ensureStorageReady() {
@@ -30,10 +30,6 @@ function ensureStorageReady() {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   }
 
-  if (!fs.existsSync(DOCUMENTS_PATH)) {
-    fs.writeFileSync(DOCUMENTS_PATH, JSON.stringify([], null, 2));
-  }
-
   if (!fs.existsSync(CHUNKS_PATH)) {
     fs.writeFileSync(CHUNKS_PATH, JSON.stringify([], null, 2));
   }
@@ -41,17 +37,9 @@ function ensureStorageReady() {
 
 function readJsonFile<T>(filePath: string, fallback: T): T {
   ensureStorageReady();
-
-  if (!fs.existsSync(filePath)) {
-    return fallback;
-  }
-
+  if (!fs.existsSync(filePath)) return fallback;
   const raw = fs.readFileSync(filePath, "utf-8");
-
-  if (!raw.trim()) {
-    return fallback;
-  }
-
+  if (!raw.trim()) return fallback;
   return JSON.parse(raw) as T;
 }
 
@@ -61,7 +49,13 @@ function writeJsonFile<T>(filePath: string, data: T) {
 }
 
 export async function getAllDocuments(): Promise<DocumentRecord[]> {
-  return readJsonFile<DocumentRecord[]>(DOCUMENTS_PATH, []);
+  try {
+    const [rows]: any = await pool.query('SELECT * FROM documents');
+    return rows;
+  } catch (error) {
+    console.error("Failed to get documents from MySQL:", error);
+    return [];
+  }
 }
 
 export async function getAllDocumentChunks(): Promise<DocumentChunk[]> {
@@ -74,10 +68,10 @@ export async function processUploadedDocument(file: Express.Multer.File) {
   const documentId = Date.now().toString();
   const fileUrl = `/uploads/${file.filename}`;
 
-const extractedText = await extractFileText(
-  String(file.path),
-  String(file.mimetype)
-);
+  const extractedText = await extractFileText(
+    String(file.path),
+    String(file.mimetype)
+  );
 
   if (!extractedText || extractedText.trim().length < 50) {
     throw new Error(
@@ -109,6 +103,13 @@ const extractedText = await extractFileText(
     });
   }
 
+  const uploadedAt = new Date().toISOString();
+
+  await pool.query(
+    'INSERT INTO documents (id, title, fileName, originalName, mimetype, url, totalChunks, uploadedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [documentId, file.originalname, file.filename, file.originalname, file.mimetype, fileUrl, embeddedChunks.length, uploadedAt]
+  );
+
   const document: DocumentRecord = {
     id: documentId,
     title: file.originalname,
@@ -117,13 +118,10 @@ const extractedText = await extractFileText(
     mimetype: file.mimetype,
     url: fileUrl,
     totalChunks: embeddedChunks.length,
-    uploadedAt: new Date().toISOString(),
+    uploadedAt,
   };
 
-  const existingDocuments = await getAllDocuments();
   const existingChunks = await getAllDocumentChunks();
-
-  writeJsonFile(DOCUMENTS_PATH, [...existingDocuments, document]);
   writeJsonFile(CHUNKS_PATH, [...existingChunks, ...embeddedChunks]);
 
   return {
@@ -133,34 +131,29 @@ const extractedText = await extractFileText(
 }
 
 export async function deleteDocumentById(documentId: string) {
-  const documents = await getAllDocuments();
-  const chunks = await getAllDocumentChunks();
+  try {
+    const [rows]: any = await pool.query('SELECT * FROM documents WHERE id = ?', [documentId]);
+    if (rows.length === 0) {
+      return { deleted: false, message: "Dokumen tidak ditemukan." };
+    }
+    const targetDocument = rows[0];
 
-  const targetDocument = documents.find((doc) => doc.id === documentId);
+    await pool.query('DELETE FROM documents WHERE id = ?', [documentId]);
 
-  if (!targetDocument) {
-    return {
-      deleted: false,
-      message: "Dokumen tidak ditemukan.",
-    };
+    const chunks = await getAllDocumentChunks();
+    const filteredChunks = chunks.filter((chunk) => chunk.documentId !== documentId);
+    writeJsonFile(CHUNKS_PATH, filteredChunks);
+
+    const physicalFilePath = path.join(UPLOAD_DIR, targetDocument.fileName);
+    if (fs.existsSync(physicalFilePath)) {
+      fs.unlinkSync(physicalFilePath);
+    }
+
+    return { deleted: true, message: "Dokumen berhasil dihapus." };
+  } catch (error) {
+    console.error("Failed to delete document:", error);
+    return { deleted: false, message: "Server error saat menghapus dokumen." };
   }
-
-  const filteredDocuments = documents.filter((doc) => doc.id !== documentId);
-  const filteredChunks = chunks.filter((chunk) => chunk.documentId !== documentId);
-
-  writeJsonFile(DOCUMENTS_PATH, filteredDocuments);
-  writeJsonFile(CHUNKS_PATH, filteredChunks);
-
-  const physicalFilePath = path.join(UPLOAD_DIR, targetDocument.fileName);
-
-  if (fs.existsSync(physicalFilePath)) {
-    fs.unlinkSync(physicalFilePath);
-  }
-
-  return {
-    deleted: true,
-    message: "Dokumen berhasil dihapus.",
-  };
 }
 
 export async function importDatasetFromFolder() {
@@ -174,7 +167,6 @@ export async function importDatasetFromFolder() {
   const existingDocs = await getAllDocuments();
   const existingChunks = await getAllDocumentChunks();
   
-  const newDocs = [...existingDocs];
   const newChunks = [...existingChunks];
   
   let imported = 0;
@@ -184,8 +176,7 @@ export async function importDatasetFromFolder() {
   for (const file of files) {
     const ext = path.extname(file).toLowerCase();
     
-    // Support PDF, DOCX, XLSX
-    if (![".pdf", ".docx", ".xlsx"].includes(ext)) {
+    if (![".pdf", ".docx", ".xlsx", ".txt"].includes(ext)) {
       errors.push(`Skipped ${file}: Unsupported format`);
       skipped++;
       continue;
@@ -199,7 +190,7 @@ export async function importDatasetFromFolder() {
 
     const filePath = path.join(datasetDir, file);
     
-    let mimetype = "application/octet-stream";
+    let mimetype = "text/plain";
     if (ext === ".pdf") mimetype = "application/pdf";
     if (ext === ".docx") mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     if (ext === ".xlsx") mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -240,18 +231,13 @@ export async function importDatasetFromFolder() {
         });
       }
 
-      const document: DocumentRecord = {
-        id: documentId,
-        title: file,
-        fileName: file,
-        originalName: file,
-        mimetype,
-        url: fileUrl,
-        totalChunks: embeddedChunks.length,
-        uploadedAt: new Date().toISOString(),
-      };
+      const uploadedAt = new Date().toISOString();
 
-      newDocs.push(document);
+      await pool.query(
+        'INSERT INTO documents (id, title, fileName, originalName, mimetype, url, totalChunks, uploadedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [documentId, file, file, file, mimetype, fileUrl, embeddedChunks.length, uploadedAt]
+      );
+
       newChunks.push(...embeddedChunks);
       imported++;
       
@@ -262,7 +248,6 @@ export async function importDatasetFromFolder() {
     }
   }
 
-  writeJsonFile(DOCUMENTS_PATH, newDocs);
   writeJsonFile(CHUNKS_PATH, newChunks);
 
   return { imported, skipped, errors };

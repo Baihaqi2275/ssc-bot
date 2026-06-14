@@ -14,21 +14,33 @@ type LoginProps = {
 function Login({ onLogin, onShowRegister, onBack }: LoginProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    const savedUsername = localStorage.getItem("registeredUsername");
-    const savedPassword = localStorage.getItem("registeredPassword");
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: username, password }),
+      });
+      const data = await response.json();
 
-    const isRegisteredUser = username === savedUsername && password === savedPassword;
-    if (isRegisteredUser) {
-      localStorage.setItem("isLogin", "true");
-      localStorage.setItem("username", username);
-      localStorage.setItem("role", "user");
-      onLogin(username, "user");
-    } else {
-      alert("Username atau password mahasiswa salah!");
+      if (data.status === "success" && data.data.role === "user") {
+        localStorage.setItem("isLogin", "true");
+        localStorage.setItem("username", data.data.name);
+        localStorage.setItem("role", "user");
+        localStorage.setItem("token", data.token);
+        onLogin(data.data.name, "user");
+      } else {
+        alert(data.message || "Username atau password salah!");
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan saat menghubungi server.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,8 +91,8 @@ function Login({ onLogin, onShowRegister, onBack }: LoginProps) {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Memproses..." : "Login"}
             </Button>
             <div className="text-sm text-center text-muted-foreground">
               Belum punya akun?{" "}

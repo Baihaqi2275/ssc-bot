@@ -4,41 +4,62 @@ import { RecentChats } from "./RecentChats"
 import { TopTopics } from "./TopTopics"
 import { SystemStatus } from "./SystemStatus"
 import { Users, MessageCircle, MessageSquareText, Zap } from "lucide-react"
+import { useState, useEffect } from "react"
 
 export function Overview() {
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeChats: 0,
+    totalMessages: 0,
+    aiTokensUsed: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = () => {
+      fetch("http://localhost:5000/api/admin/stats")
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            setStats(data.data);
+          }
+        })
+        .catch(err => console.error(err));
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000); // Polling every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Total Users" 
-          value="0" 
-          delta="0%" 
+          value={stats.totalUsers.toString()} 
+          delta="Aktif" 
           deltaType="positive"
-          hint="Belum ada data"
           icon={Users}
         />
         <StatCard 
           title="Active Chats Today" 
-          value="0" 
-          delta="0%" 
+          value={stats.activeChats.toString()} 
+          delta="Live" 
           deltaType="positive"
-          hint="Belum ada data"
           icon={MessageCircle}
         />
         <StatCard 
           title="Total Messages" 
-          value="0" 
-          delta="0%" 
-          deltaType="positive"
-          hint="Belum ada data"
+          value={stats.totalMessages.toString()} 
+          delta="Total" 
+          deltaType="neutral"
           icon={MessageSquareText}
         />
         <StatCard 
           title="AI Tokens Used" 
-          value="0" 
-          delta="0%" 
-          deltaType="positive"
-          hint="Belum ada data"
+          value={stats.aiTokensUsed.toString()} 
+          delta="Estimasi" 
+          deltaType="neutral"
           icon={Zap}
         />
       </div>

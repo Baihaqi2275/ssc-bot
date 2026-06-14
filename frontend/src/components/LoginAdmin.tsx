@@ -12,19 +12,33 @@ type LoginAdminProps = {
 function LoginAdmin({ onLogin, onBack }: LoginAdminProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    const isDefaultAdmin = username === "admin" && password === "admin123";
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: username, password }),
+      });
+      const data = await response.json();
 
-    if (isDefaultAdmin) {
-      localStorage.setItem("isLogin", "true");
-      localStorage.setItem("username", username);
-      localStorage.setItem("role", "admin");
-      onLogin(username, "admin");
-    } else {
-      alert("Kredensial Admin tidak valid!");
+      if (data.status === "success" && data.data.role === "admin") {
+        localStorage.setItem("isLogin", "true");
+        localStorage.setItem("username", data.data.name);
+        localStorage.setItem("role", "admin");
+        localStorage.setItem("token", data.token);
+        onLogin(data.data.name, "admin");
+      } else {
+        alert(data.message || "Kredensial Admin tidak valid!");
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan saat menghubungi server.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,8 +92,8 @@ function LoginAdmin({ onLogin, onBack }: LoginAdminProps) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Login sebagai Admin
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+              {isLoading ? "Memproses..." : "Login sebagai Admin"}
             </Button>
           </CardFooter>
         </form>

@@ -31,8 +31,8 @@ type ChatSession = {
   updatedAt: string;
 };
 
-const chatSessions: ChatSession[] = [];
-const chatMessages: ChatMessage[] = [];
+export const chatSessions: ChatSession[] = [];
+export const chatMessages: ChatMessage[] = [];
 
 function getMessageFromBody(body: unknown): string | null {
   if (!body || typeof body !== "object") return null;

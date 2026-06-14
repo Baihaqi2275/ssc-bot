@@ -22,6 +22,7 @@ type ChatMessage = {
   content: string;
   createdAt: string;
   sources?: ChatSource[];
+  feedback?: "like" | "dislike";
 };
 
 type BackendSession = {
@@ -62,6 +63,7 @@ function Chatbot({ onLogout }: ChatbotProps) {
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null,
   );
+  const [isBuffering, setIsBuffering] = useState(true);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,8 +71,25 @@ function Chatbot({ onLogout }: ChatbotProps) {
   const canSend = input.trim().length > 0 && !isLoading;
 
   useEffect(() => {
+    document.title = "Chatbot SSC";
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    
+    const timer = setTimeout(() => {
+      setIsBuffering(false);
+    }, 1500);
+    return () => clearTimeout(timer);
   }, [messages, isLoading, error]);
+
+  if (isBuffering) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground animate-pulse">Memuat Layanan SSC...</p>
+        </div>
+      </div>
+    );
+  }
 
   async function getOrCreateBackendSession() {
     if (backendSession) {
@@ -202,6 +221,35 @@ function Chatbot({ onLogout }: ChatbotProps) {
     }
 
     void navigator.clipboard.writeText(content);
+  }
+
+  function handleRegenerate(index: number) {
+    if (isLoading) return;
+    const userMessageIndex = index - 1;
+    if (userMessageIndex >= 0 && messages[userMessageIndex].role === "user") {
+      const prompt = messages[userMessageIndex].content;
+      setMessages((prev) => prev.slice(0, userMessageIndex));
+      void sendMessage(prompt);
+    }
+  }
+
+  function handleEditMessage(index: number) {
+    if (isLoading) return;
+    const message = messages[index];
+    setInput(message.content);
+    setMessages((prev) => prev.slice(0, index));
+  }
+
+  function handleFeedback(index: number, type: "like" | "dislike") {
+    setMessages((prev) => {
+      const next = [...prev];
+      if (next[index].feedback === type) {
+        next[index].feedback = undefined;
+      } else {
+        next[index].feedback = type;
+      }
+      return next;
+    });
   }
 
   const suggestedPrompts = [
@@ -524,21 +572,38 @@ function Chatbot({ onLogout }: ChatbotProps) {
                         )}
                     </div>
 
-                    <div className="message-meta">
-                      <span>{formatTime(message.createdAt)}</span>
+                    <div className="message-meta flex gap-2 items-center">
+                      {message.role === "assistant" && (
+                        <>
+                          <button type="button" aria-label="Like" className={message.feedback === "like" ? "text-primary" : "text-muted-foreground hover:text-primary"} onClick={() => handleFeedback(index, "like")}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>thumb_up</span>
+                          </button>
+                          <button type="button" aria-label="Dislike" className={message.feedback === "dislike" ? "text-red-500" : "text-muted-foreground hover:text-red-500"} onClick={() => handleFeedback(index, "dislike")}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>thumb_down</span>
+                          </button>
+                          <button type="button" aria-label="Regenerate" className="text-muted-foreground hover:text-primary" onClick={() => handleRegenerate(index)}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>refresh</span>
+                          </button>
+                        </>
+                      )}
+                      
+                      {message.role === "user" && <span>{formatTime(message.createdAt)}</span>}
 
-                      <button
-                        type="button"
-                        aria-label="Copy message"
-                        onClick={() => handleCopyMessage(message.content)}
-                      >
-                        <span
-                          className="material-symbols-outlined"
-                          aria-hidden="true"
-                        >
-                          content_copy
-                        </span>
+                      <button type="button" aria-label="Copy message" className="text-muted-foreground hover:text-primary" onClick={() => handleCopyMessage(message.content)}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>content_copy</span>
                       </button>
+
+                      {message.role === "user" && (
+                        <button type="button" aria-label="Edit message" className="text-muted-foreground hover:text-primary" onClick={() => handleEditMessage(index)}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
+                        </button>
+                      )}
+
+                      {message.role === "assistant" && (
+                        <button type="button" aria-label="More" className="text-muted-foreground hover:text-primary">
+                          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>more_horiz</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>

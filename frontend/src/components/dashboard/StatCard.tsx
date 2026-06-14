@@ -7,11 +7,10 @@ interface StatCardProps {
   value: string | number
   delta: string
   deltaType: "positive" | "negative" | "neutral"
-  hint: string
   icon: React.ElementType
 }
 
-export function StatCard({ title, value, delta, deltaType, hint, icon: Icon }: StatCardProps) {
+export function StatCard({ title, value, delta, deltaType, icon: Icon }: StatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -21,19 +20,16 @@ export function StatCard({ title, value, delta, deltaType, hint, icon: Icon }: S
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-3">
+          <div className="text-2xl font-bold text-foreground">{value}</div>
           <span className={cn(
-            "text-xs font-medium px-1.5 py-0.5 rounded-md",
+            "text-xs font-medium px-2 py-1 rounded-md text-center",
             deltaType === "positive" ? "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400" : 
             deltaType === "negative" ? "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400" : 
             "text-gray-700 bg-gray-100 dark:bg-gray-800 dark:text-gray-400"
           )}>
             {delta}
           </span>
-          <p className="text-xs text-muted-foreground">
-            {hint}
-          </p>
         </div>
       </CardContent>
     </Card>

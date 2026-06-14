@@ -19,7 +19,7 @@ export function KnowledgeBase() {
   const fetchDocuments = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch("http://localhost:3000/api/documents")
+      const response = await fetch("http://localhost:5000/api/documents")
       const result = await response.json()
       if (result.success) {
         setDocuments(result.documents)
@@ -48,7 +48,7 @@ export function KnowledgeBase() {
     formData.append("file", file)
 
     try {
-      const response = await fetch("http://localhost:3000/api/documents/upload", {
+      const response = await fetch("http://localhost:5000/api/documents/upload", {
         method: "POST",
         body: formData,
       })
@@ -74,7 +74,7 @@ export function KnowledgeBase() {
     if (!window.confirm(`Yakin ingin menghapus dokumen "${title}"?`)) return
 
     try {
-      const response = await fetch(`http://localhost:3000/api/documents/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/documents/${id}`, {
         method: "DELETE",
       })
       const result = await response.json()

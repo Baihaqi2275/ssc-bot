@@ -23,6 +23,9 @@ function App() {
   const [authPage, setAuthPage] = useState<"landing" | "login_user" | "login_admin" | "register">("landing");
 
   const handleLogin = (name: string, userRole: string) => {
+    localStorage.setItem("isLogin", "true");
+    localStorage.setItem("username", name);
+    localStorage.setItem("role", userRole);
     setUsername(name);
     setRole(userRole);
     setIsLogin(true);
@@ -40,7 +43,7 @@ function App() {
 
   if (!isLogin) {
     if (authPage === "landing") {
-      return <LandingPage onSelect={(mode) => setAuthPage(mode === "user" ? "login_user" : "login_admin")} />;
+      return <LandingPage onSelect={(mode) => setAuthPage(mode)} />;
     }
     if (authPage === "register") {
       return <Register onShowLogin={() => setAuthPage("login_user")} />;

@@ -10,8 +10,9 @@ type RegisterProps = {
 function Register({ onShowLogin }: RegisterProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validasi input kosong
@@ -26,14 +27,27 @@ function Register({ onShowLogin }: RegisterProps) {
       return;
     }
 
-    // Simpan akun ke localStorage
-    localStorage.setItem("registeredUsername", username);
-    localStorage.setItem("registeredPassword", password);
+    setIsLoading(true);
 
-    alert("Register berhasil! Silakan login.");
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: username, email: username, password, role: "user" }),
+      });
+      const data = await response.json();
 
-    // Kembali ke halaman login
-    onShowLogin();
+      if (data.status === "success" || data.status === 201) {
+        alert("Registrasi berhasil! Silakan login.");
+        onShowLogin();
+      } else {
+        alert(data.message || "Registrasi gagal.");
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan saat menghubungi server.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -73,8 +87,8 @@ function Register({ onShowLogin }: RegisterProps) {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full">
-              Register
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Memproses..." : "Register"}
             </Button>
             <div className="text-sm text-center text-muted-foreground">
               Sudah punya akun?{" "}

@@ -17,6 +17,7 @@ export function DashboardLayout({ username, onLogout }: DashboardLayoutProps) {
   const [isBuffering, setIsBuffering] = useState(true)
 
   useEffect(() => {
+    document.title = "Dashboard SSC";
     const timer = setTimeout(() => {
       setIsBuffering(false)
     }, 1500)
@@ -42,7 +43,7 @@ export function DashboardLayout({ username, onLogout }: DashboardLayoutProps) {
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground animate-pulse">Memuat Layanan SSC...</p>
+          <p className="text-muted-foreground animate-pulse">Memuat Dashboard SSC...</p>
         </div>
       </div>
     )
