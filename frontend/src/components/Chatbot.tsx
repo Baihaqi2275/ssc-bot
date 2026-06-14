@@ -564,26 +564,32 @@ function Chatbot({ onLogout }: ChatbotProps) {
           )}
         </section>
 
-        <form className="chat-composer" onSubmit={handleSubmit}>
-          <div className="model-selector-wrap">
-            <button
-              type="button"
-              className="model-selector"
-              aria-label="Selected model"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                memory
-              </span>
-              <span className="model-selector-label">MODEL</span>
-              <strong>SSC Backend</strong>
-              <span className="model-capability-tag">RAG</span>
-            </button>
+        <div className="composer-wrap">
+          <div className="composer-model-row">
+            <div className="model-selector-control">
+              <button
+                type="button"
+                className="model-selector-trigger"
+                aria-label="Selected model"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  memory
+                </span>
+                <span className="model-selector-label">MODEL</span>
+                <div className="model-selector-selection">
+                  <span className="model-selector-current">SSC Backend</span>
+                  <div className="model-selector-selected-tags">
+                    <span className="model-capability-tag">RAG</span>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
 
-          <div className="composer-input-wrap">
+          <form className="composer" onSubmit={handleSubmit}>
             <button
               type="button"
-              className="composer-add-button"
+              className="tool-button"
               aria-label="Add attachment"
             >
               <span className="material-symbols-outlined" aria-hidden="true">
@@ -607,7 +613,7 @@ function Chatbot({ onLogout }: ChatbotProps) {
 
             <button
               type="submit"
-              className="composer-send-button"
+              className="send-button"
               disabled={!canSend}
               aria-label="Send message"
             >
@@ -615,13 +621,13 @@ function Chatbot({ onLogout }: ChatbotProps) {
                 arrow_upward
               </span>
             </button>
-          </div>
+          </form>
 
           <p className="composer-disclaimer">
             SSC ChatBot dapat membuat kesalahan. Verifikasi kembali informasi
             penting melalui dokumen sumber.
           </p>
-        </form>
+        </div>
       </main>
     </div>
   );

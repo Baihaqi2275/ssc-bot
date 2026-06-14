@@ -11,6 +11,7 @@ import {
 import { getAllDocumentChunks } from "../services/document.service";
 import { isAskingForSource } from "../utils/sourceIntent";
 import { isAskingForAdmin } from "../utils/adminIntent";
+import { isChitchat } from "../utils/chitchatIntent";
 
 type ChatMessage = {
   id: string;
@@ -137,79 +138,110 @@ export async function sendChatMessage(req: Request, res: Response) {
 
     saveChat(sessionId, "user", cleanMessage);
 
-    const wantsAdmin = await isAskingForAdmin(cleanMessage);
-
-    if (wantsAdmin) {
-      const answer =
-        "Baik, saya akan mengarahkan kamu untuk menghubungi admin secara langsung. Silakan isi data berikut terlebih dahulu: nama, NIM, prodi, dan nomor telepon.";
-
-      saveChat(sessionId, "assistant", answer, {
-        action: "collect_admin_contact",
-        sources: [],
-      });
-
-      return res.status(200).json({
-        success: true,
-        sessionId,
-        answer,
-        message: answer,
-        action: "collect_admin_contact",
-        sources: [],
-        showSources: false,
-      });
+    const lowerMsg = cleanMessage.toLowerCase();
+    
+    // 1. Hardcoded Fast-Paths (0 API Calls)
+    if (["hai", "halo", "hello", "pagi", "siang", "sore", "malam", "ping", "p"].includes(lowerMsg)) {
+      const answer = "Halo! Saya SSC ChatBot, Asisten SSC. Ada yang bisa saya bantu terkait layanan akademik atau tugas akhir?";
+      saveChat(sessionId, "assistant", answer, { sources: [] });
+      return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
+    }
+    if (["kamu siapa", "siapa kamu", "siapa namamu", "identitasmu"].includes(lowerMsg)) {
+      const answer = "Saya SSC ChatBot, Asisten SSC yang membantu menjawab pertanyaan akademik berdasarkan dokumen yang tersedia.";
+      saveChat(sessionId, "assistant", answer, { sources: [] });
+      return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
+    }
+    if (["terima kasih", "makasih", "thanks", "thank you", "ok", "oke", "baik", "sip"].includes(lowerMsg)) {
+      const answer = "Sama-sama! Jangan ragu untuk bertanya lagi jika ada yang perlu dibantu terkait tugas akhir atau layanan akademik SSC.";
+      saveChat(sessionId, "assistant", answer, { sources: [] });
+      return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
     }
 
+    // 2. Cheap Local Domain Check
+    const hasDomainKeywords = (text: string) => {
+      const domainKeywords = [
+        "ta", "tugas akhir", "skripsi", "sidang", "seminar", "proposal",
+        "bimbingan", "dosen", "akademik", "ssc", "yudisium", "lulus",
+        "jadwal", "format", "pedoman", "revisi", "nilai", "ipk", "pembimbing", "penguji",
+        "mahasiswa", "surat", "aktif", "pengantar", "toss", "sk", "sks",
+        "kelulusan", "cumlaude", "summa", "pendaftaran", "persyaratan", "dokumen", "administrasi", "layanan"
+      ];
+      const normalized = text.toLowerCase();
+      return domainKeywords.some(keyword => new RegExp(`\\b${keyword}\\b`, 'i').test(normalized));
+    };
+
+    const isDomainRelated = hasDomainKeywords(cleanMessage);
+
+    // 3. Fast-Reject Out-of-Domain (0 API Calls for factual questions)
+    if (!isDomainRelated) {
+      const hasQuestionWords = /\b(apa|siapa|berapa|kapan|dimana|bagaimana|kenapa|mengapa|cara)\b/i.test(cleanMessage) || cleanMessage.includes('?');
+      
+      // If it's a clear question or long text but has no domain keywords, drop it instantly (0 API calls)
+      if (hasQuestionWords || cleanMessage.length > 30) {
+        const answer = "Maaf, saya hanya dapat membantu pertanyaan yang berkaitan dengan layanan akademik atau tugas akhir berdasarkan dokumen yang tersedia.";
+        saveChat(sessionId, "assistant", answer, { sources: [] });
+        return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
+      }
+
+      // Ambiguous short message. Fallback to chitchat classifier.
+      const wantsChitchat = await isChitchat(cleanMessage);
+      if (wantsChitchat) {
+        const answer = await generateAnswerWithAI({
+          question: cleanMessage,
+          context: `Kamu adalah SSC ChatBot.
+Tugasmu adalah membalas basa-basi (sapaan, terima kasih, pertanyaan identitas) dari user dengan SANGAT SINGKAT.
+
+ATURAN:
+1. Maksimal 1-2 kalimat pendek.
+2. Jika user menyapa, balas sapaan dan tawarkan bantuan terkait "tugas akhir atau layanan akademik".
+3. Jika user bertanya "kamu siapa" atau sejenisnya, WAJIB jawab persis: "Saya SSC ChatBot, Asisten SSC yang membantu menjawab pertanyaan akademik berdasarkan dokumen yang tersedia."
+4. Jangan bertele-tele.`,
+        });
+
+        saveChat(sessionId, "assistant", answer, { sources: [] });
+        return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
+      } else {
+        const answer = "Maaf, saya hanya dapat membantu pertanyaan yang berkaitan dengan layanan akademik atau tugas akhir berdasarkan dokumen yang tersedia.";
+        saveChat(sessionId, "assistant", answer, { sources: [] });
+        return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
+      }
+    }
+
+    // 4. Concurrent Intent Checks and Retrieval Rewrite (For valid domain queries)
+    const [wantsAdmin, wantsSource, retrievalQuestion] = await Promise.all([
+      isAskingForAdmin(cleanMessage),
+      isAskingForSource(cleanMessage),
+      rewriteQuestionForRetrieval(cleanMessage)
+    ]);
+
+    if (wantsAdmin) {
+      const answer = "Baik, saya akan mengarahkan kamu untuk menghubungi admin secara langsung. Silakan isi data berikut terlebih dahulu: nama, NIM, prodi, dan nomor telepon.";
+      saveChat(sessionId, "assistant", answer, { action: "collect_admin_contact", sources: [] });
+      return res.status(200).json({ success: true, sessionId, answer, message: answer, action: "collect_admin_contact", sources: [], showSources: false });
+    }
+
+    // 5. Search Relevant Chunks
     const allChunks = await getAllDocumentChunks();
 
     if (!allChunks.length) {
-      const answer =
-        "Maaf, belum ada dokumen tugas akhir yang tersedia. Admin perlu mengunggah atau menyediakan dokumen tugas akhir terlebih dahulu agar saya dapat menjawab pertanyaan.";
-
-      saveChat(sessionId, "assistant", answer, {
-        sources: [],
-      });
-
-      return res.status(200).json({
-        success: true,
-        sessionId,
-        answer,
-        message: answer,
-        action: null,
-        sources: [],
-        showSources: false,
-      });
+      const answer = "Maaf, belum ada dokumen tugas akhir yang tersedia. Admin perlu mengunggah atau menyediakan dokumen tugas akhir terlebih dahulu agar saya dapat menjawab pertanyaan.";
+      saveChat(sessionId, "assistant", answer, { sources: [] });
+      return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
     }
-
-    const wantsSource = await isAskingForSource(cleanMessage);
-
-    const retrievalQuestion = await rewriteQuestionForRetrieval(cleanMessage);
 
     const relevantChunks = await searchRelevantChunks(
       retrievalQuestion,
       allChunks,
       {
-        topK: 7,
+        topK: 3,
         minScore: 0.18,
       }
     );
 
     if (!relevantChunks.length) {
-      const answer =
-        "Maaf, saya hanya dapat membantu pertanyaan yang berkaitan dengan tugas akhir berdasarkan dokumen akademik yang tersedia.";
-
-      saveChat(sessionId, "assistant", answer, {
-        sources: [],
-      });
-
-      return res.status(200).json({
-        success: true,
-        sessionId,
-        answer,
-        message: answer,
-        action: null,
-        sources: [],
-        showSources: false,
-      });
+      const answer = "Maaf, saya hanya dapat membantu pertanyaan yang berkaitan dengan layanan akademik atau tugas akhir berdasarkan dokumen yang tersedia.";
+      saveChat(sessionId, "assistant", answer, { sources: [] });
+      return res.status(200).json({ success: true, sessionId, answer, message: answer, action: null, sources: [], showSources: false });
     }
 
     const context = buildContextFromChunks(relevantChunks);

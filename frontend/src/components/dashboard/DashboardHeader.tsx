@@ -1,5 +1,4 @@
-import { Search, Bell, Menu } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Bell, Menu } from "lucide-react"
 
 type DashboardHeaderProps = {
   title: string;

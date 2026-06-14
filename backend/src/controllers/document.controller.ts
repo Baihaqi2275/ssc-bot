@@ -80,3 +80,22 @@ export async function deleteDocument(req: Request, res: Response) {
   }
 
 }
+import { importDatasetFromFolder } from "../services/document.service";
+
+export async function importDataset(req: Request, res: Response) {
+  try {
+    const result = await importDatasetFromFolder();
+    
+    return res.status(200).json({
+      success: true,
+      message: "Dataset import completed",
+      ...result
+    });
+  } catch (error: any) {
+    console.error("Import dataset error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to import dataset",
+    });
+  }
+}

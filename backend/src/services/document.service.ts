@@ -162,3 +162,108 @@ export async function deleteDocumentById(documentId: string) {
     message: "Dokumen berhasil dihapus.",
   };
 }
+
+export async function importDatasetFromFolder() {
+  const datasetDir = path.join(process.cwd(), "dataset");
+  
+  if (!fs.existsSync(datasetDir)) {
+    return { imported: 0, skipped: 0, errors: ["Dataset directory not found"] };
+  }
+
+  const files = fs.readdirSync(datasetDir);
+  const existingDocs = await getAllDocuments();
+  const existingChunks = await getAllDocumentChunks();
+  
+  const newDocs = [...existingDocs];
+  const newChunks = [...existingChunks];
+  
+  let imported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const file of files) {
+    const ext = path.extname(file).toLowerCase();
+    
+    // Support PDF, DOCX, XLSX
+    if (![".pdf", ".docx", ".xlsx"].includes(ext)) {
+      errors.push(`Skipped ${file}: Unsupported format`);
+      skipped++;
+      continue;
+    }
+
+    if (existingDocs.some(d => d.originalName === file)) {
+      errors.push(`Skipped ${file}: Already indexed`);
+      skipped++;
+      continue;
+    }
+
+    const filePath = path.join(datasetDir, file);
+    
+    let mimetype = "application/octet-stream";
+    if (ext === ".pdf") mimetype = "application/pdf";
+    if (ext === ".docx") mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (ext === ".xlsx") mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    try {
+      const documentId = Date.now().toString() + "-" + Math.floor(Math.random() * 1000);
+      const fileUrl = `/dataset/${encodeURIComponent(file)}`;
+
+      const extractedText = await extractFileText(filePath, mimetype);
+
+      if (!extractedText || extractedText.trim().length < 50) {
+        errors.push(`Skipped ${file}: Text too short or unreadable`);
+        skipped++;
+        continue;
+      }
+
+      const chunks = chunkText(extractedText, {
+        maxLength: 900,
+        overlap: 150,
+      });
+
+      if (!chunks.length) {
+        errors.push(`Skipped ${file}: Failed to chunk`);
+        skipped++;
+        continue;
+      }
+
+      const embeddedChunks: DocumentChunk[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const embedding = await generateEmbedding(chunks[i]);
+        embeddedChunks.push({
+          id: `${documentId}-${i}`,
+          documentId,
+          documentTitle: file,
+          documentUrl: fileUrl,
+          text: chunks[i],
+          embedding,
+        });
+      }
+
+      const document: DocumentRecord = {
+        id: documentId,
+        title: file,
+        fileName: file,
+        originalName: file,
+        mimetype,
+        url: fileUrl,
+        totalChunks: embeddedChunks.length,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      newDocs.push(document);
+      newChunks.push(...embeddedChunks);
+      imported++;
+      
+      console.log(`Successfully indexed: ${file} (${embeddedChunks.length} chunks)`);
+    } catch (e: any) {
+      errors.push(`Skipped ${file}: Error - ${e.message}`);
+      skipped++;
+    }
+  }
+
+  writeJsonFile(DOCUMENTS_PATH, newDocs);
+  writeJsonFile(CHUNKS_PATH, newChunks);
+
+  return { imported, skipped, errors };
+}

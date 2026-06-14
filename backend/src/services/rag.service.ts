@@ -96,15 +96,15 @@ export function buildContextFromChunks(chunks: SearchResult[]): string {
   if (!chunks.length) return "";
 
   return chunks
-    .map((chunk, index) => {
+    .map((chunk) => {
       return `
-[Konteks ${index + 1}]
 Judul Dokumen: ${chunk.documentTitle}
 Isi:
 ${chunk.text}
+---
 `;
     })
-    .join("\n\n");
+    .join("\n");
 }
 
 export function getUniqueSources(chunks: SearchResult[]) {

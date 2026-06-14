@@ -27,7 +27,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
-    message: "TA Assistant Backend is running.",
+    message: "SSC ChatBot Backend is running.",
   });
 });
 

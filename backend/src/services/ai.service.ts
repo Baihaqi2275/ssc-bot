@@ -22,7 +22,7 @@ export async function rewriteQuestionForRetrieval(
         {
           role: "system",
           content: `
-Kamu bertugas merapikan pertanyaan mahasiswa agar lebih mudah dicari pada dokumen akademik tugas akhir.
+Kamu bertugas merapikan pertanyaan mahasiswa agar lebih mudah dicari pada dokumen layanan akademik SSC.
 
 Aturan:
 - Perbaiki typo.
@@ -60,21 +60,22 @@ export async function generateAnswerWithAI({
   const hasContext = context && context.trim().length > 80;
 
   if (!hasContext) {
-    return "Maaf, saya belum menemukan informasi tersebut pada dokumen tugas akhir yang tersedia. Saya hanya dapat menjawab pertanyaan berdasarkan dokumen akademik yang sudah diunggah.";
+    return "Maaf, saya belum menemukan informasi tersebut pada dokumen yang tersedia. Saya hanya dapat menjawab pertanyaan berdasarkan dokumen akademik yang sudah diunggah.";
   }
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    temperature: 0.2,
-    max_tokens: 1000,
-    messages: [
-      {
-        role: "system",
-        content: TA_SYSTEM_PROMPT,
-      },
-      {
-        role: "user",
-        content: `
+  try {
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      temperature: 0.2,
+      max_tokens: 1000,
+      messages: [
+        {
+          role: "system",
+          content: TA_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: `
 Pertanyaan mahasiswa:
 ${question}
 
@@ -82,19 +83,24 @@ Konteks dokumen yang boleh digunakan untuk menjawab:
 ${context}
 
 Instruksi jawaban:
-- Jawab hanya berdasarkan konteks dokumen.
-- Jangan mengarang informasi.
-- Jangan menampilkan sumber dokumen di dalam isi jawaban.
-- Jika pertanyaan di luar konteks tugas akhir, tolak dengan sopan.
-- Jika informasi tidak ada dalam konteks, katakan bahwa informasi belum tersedia pada dokumen tugas akhir yang ada.
+- Sintesis seluruh informasi dari konteks menjadi satu jawaban utuh.
+- Jangan pernah menyebutkan kata "Konteks", "Dokumen", "Referensi", "Sumber", atau "Chunk".
+- Jawab seolah-olah kamu adalah Asisten SSC yang sudah menguasai informasi tersebut dari ingatanmu.
+- Jangan mengarang informasi di luar konteks.
+- Jika pertanyaan di luar konteks layanan akademik atau tugas akhir, tolak dengan sopan.
+- Jika informasi tidak ada dalam konteks, katakan bahwa informasi belum tersedia pada dokumen SSC yang ada.
 - Buat jawaban rapi, natural, dan mudah dipahami seperti ChatGPT.
 `,
-      },
-    ],
-  });
+        },
+      ],
+    });
 
-  return (
-    completion.choices[0]?.message?.content?.trim() ||
-    "Maaf, saya belum dapat membuat jawaban dari dokumen yang tersedia."
-  );
+    return (
+      completion.choices[0]?.message?.content?.trim() ||
+      "Maaf, saya belum dapat membuat jawaban dari dokumen yang tersedia."
+    );
+  } catch (error) {
+    console.error("Groq AI Service Error:", error);
+    return "Maaf, layanan AI sedang mengalami gangguan teknis atau sibuk. Silakan coba beberapa saat lagi.";
+  }
 }
