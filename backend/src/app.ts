@@ -9,8 +9,25 @@ import adminRoutes from "./routes/admin.routes";
 import userRoutes from "./routes/user.routes";
 
 import supportRoutes from "./routes/support.routes";
+import { pool } from "./config/database";
 
 const app = express();
+
+app.get(["/_/backend/api/db-test", "/api/db-test"], async (_req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({
+      success: true,
+      message: "Database connection successful!",
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "Database connection failed",
+      error: error.message || error,
+    });
+  }
+});
 
 app.use(
   cors({
