@@ -6,6 +6,8 @@ import { SystemStatus } from "./SystemStatus"
 import { Users, MessageCircle, MessageSquareText, Zap } from "lucide-react"
 import { useState, useEffect } from "react"
 
+import { API_BASE_URL } from "../../services/sscApi"
+
 export function Overview() {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -18,7 +20,7 @@ export function Overview() {
 
   useEffect(() => {
     const fetchStats = () => {
-      fetch("http://localhost:5000/api/admin/stats", {
+      fetch(`${API_BASE_URL}/admin/stats`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
       })
         .then(res => res.json())

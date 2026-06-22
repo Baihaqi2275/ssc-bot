@@ -1,6 +1,8 @@
 import { Bell, Menu, UserPlus, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 
+import { API_BASE_URL } from "../../services/sscApi";
+
 type DashboardHeaderProps = {
   title: string;
   onMenuClick: () => void;
@@ -20,7 +22,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
 
   useEffect(() => {
     const fetchNotifications = () => {
-      fetch("http://localhost:5000/api/admin/notifications", {
+      fetch(`${API_BASE_URL}/admin/notifications`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
       })
         .then((res) => res.json())

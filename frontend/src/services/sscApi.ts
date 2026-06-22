@@ -1,5 +1,7 @@
-const API_BASE_URL = "http://localhost:5000/api";
-const BACKEND_BASE_URL = "http://localhost:5000";
+const isProduction = typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1");
+
+export const BACKEND_BASE_URL = isProduction ? "/_/backend" : "http://localhost:5000";
+export const API_BASE_URL = `${BACKEND_BASE_URL}/api`;
 
 export type ChatSource = {
   document_title?: string;
