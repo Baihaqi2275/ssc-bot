@@ -1,3 +1,10 @@
+// Polyfill missing DOM classes for pdf-parse/pdfjs-dist in Node.js serverless environment
+if (typeof globalThis !== "undefined") {
+  (globalThis as any).DOMMatrix = (globalThis as any).DOMMatrix || class DOMMatrix {};
+  (globalThis as any).ImageData = (globalThis as any).ImageData || class ImageData {};
+  (globalThis as any).Path2D = (globalThis as any).Path2D || class Path2D {};
+}
+
 import dotenv from "dotenv";
 
 dotenv.config();
