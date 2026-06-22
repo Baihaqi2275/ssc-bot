@@ -32,10 +32,10 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/documents", documentRoutes);
-app.use("/api/support", supportRoutes);
+app.use(["/_/backend/api/auth", "/api/auth"], authRoutes);
+app.use(["/_/backend/api/admin", "/api/admin"], adminRoutes);
+app.use(["/_/backend/api/users", "/api/users"], userRoutes);
+app.use(["/_/backend/api/chat", "/api/chat"], chatRoutes);
+app.use(["/_/backend/api/documents", "/api/documents"], documentRoutes);
+app.use(["/_/backend/api/support", "/api/support"], supportRoutes);
 export default app;
