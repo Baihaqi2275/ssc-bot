@@ -1,8 +1,8 @@
-import { StatCard } from "./StatCard"
-import { ActivityChart } from "./ActivityChart"
-import { RecentChats } from "./RecentChats"
-import { TopTopics } from "./TopTopics"
-import { SystemStatus } from "./SystemStatus"
+import { StatCard } from "../StatCard"
+import { ActivityChart } from "../ActivityChart"
+import { RecentChats } from "../RecentChats"
+import { TopTopics } from "../TopTopics"
+import { SystemStatus } from "../SystemStatus"
 import { Users, MessageCircle, MessageSquareText, Zap } from "lucide-react"
 import { useState, useEffect } from "react"
 
