@@ -17,7 +17,7 @@ import {
   findMatchingImportantLinks,
   TUGAS_AKHIR_PORTAL_URL,
   isTugasAkhirPortalRequest,
-} from "../utils/sourceUrlResolver1";
+} from "../utils/sourceUrlResolver";
 import { normalizeQuery } from "../utils/textNormalizer";
 
 type ChatMessage = {
