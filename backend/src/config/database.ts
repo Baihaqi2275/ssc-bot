@@ -106,7 +106,7 @@ export async function initDB() {
     );
 
     if (rows.length === 0) {
-      const bcrypt = await import("bcrypt");
+      const bcrypt = await import("bcryptjs");
       const hash = await bcrypt.default.hash(adminPassword, 10);
 
       await pool.query(
