@@ -46,10 +46,13 @@ function Register({ onShowLogin, onLogin }: RegisterProps) {
     setIsLoading(true);
 
     try {
+      const displayName = username.includes("@") ? username.split("@")[0] : username;
+      const emailValue = username.includes("@") ? username : `${username}@gmail.com`; // Fallback to a valid email format if they type a username
+
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: username, email: username, password, role: "user" }),
+        body: JSON.stringify({ name: displayName, email: emailValue, password, role: "user" }),
       });
       const data = await response.json();
 
@@ -59,7 +62,7 @@ function Register({ onShowLogin, onLogin }: RegisterProps) {
           const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: username, password }),
+            body: JSON.stringify({ email: emailValue, password }),
           });
           const loginData = await loginResponse.json();
 
