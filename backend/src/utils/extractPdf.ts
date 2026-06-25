@@ -1,17 +1,9 @@
-import "../polyfill";
 import fs from "fs";
-import { PDFParse } from "pdf-parse";
+// @ts-ignore
+import pdf from "pdf-parse";
 
 export async function extractPdfText(filePath: string): Promise<string> {
   const buffer = fs.readFileSync(filePath);
-
-  const parser = new PDFParse({
-    data: buffer,
-  });
-
-  const result = await parser.getText();
-
-  await parser.destroy();
-
-  return result.text || "";
+  const data = await pdf(buffer);
+  return data.text || "";
 }

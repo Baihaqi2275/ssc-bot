@@ -1,5 +1,3 @@
-import "./polyfill"; // MUST BE FIRST IMPORT to ensure DOM classes are polyfilled before other imports load
-
 import dotenv from "dotenv";
 
 dotenv.config();
