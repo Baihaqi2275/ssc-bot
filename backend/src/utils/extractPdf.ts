@@ -1,3 +1,4 @@
+import "../polyfill";
 import fs from "fs";
 import { PDFParse } from "pdf-parse";
 
