@@ -2,10 +2,15 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = path.join(process.cwd(), "uploads");
+const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+const uploadDir = isProduction ? "/tmp" : path.join(process.cwd(), "uploads");
 
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (error) {
+    console.error("Failed to create upload directory:", error);
+  }
 }
 
 const allowedMimeTypes = [

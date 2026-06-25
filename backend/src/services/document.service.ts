@@ -31,9 +31,13 @@ const DATASET_DIR = path.join(process.cwd(), "dataset");
 const CHUNKS_PATH = path.join(DATA_DIR, "documentChunks.json");
 
 function ensureStorageReady() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  if (!fs.existsSync(CHUNKS_PATH)) fs.writeFileSync(CHUNKS_PATH, JSON.stringify([], null, 2));
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    if (!fs.existsSync(CHUNKS_PATH)) fs.writeFileSync(CHUNKS_PATH, JSON.stringify([], null, 2));
+  } catch (error) {
+    console.warn("Storage ready check bypassed or failed (expected in read-only serverless environments):", error);
+  }
 }
 
 function readJsonFile<T>(filePath: string, fallback: T): T {
